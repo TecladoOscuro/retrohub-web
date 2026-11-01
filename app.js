@@ -3,7 +3,8 @@
 const CONSOLE_BY_EXT = {
   gb: "gb", gbc: "gb", gba: "gba",
   nes: "nes", sfc: "snes", smc: "snes",
-  z64: "n64", v64: "n64", n64: "n64"
+  z64: "n64", v64: "n64", n64: "n64",
+  nds: "nds"
 };
 
 const drop = document.getElementById("drop");
@@ -31,7 +32,7 @@ async function addFiles(files) {
   for (const file of files) {
     const consoleId = detectConsole(file.name);
     if (!consoleId) {
-      alert(`Formato no soportado: ${file.name}\n(GB, GBC, GBA, NES, SNES, N64)`);
+      alert(`Formato no soportado: ${file.name}\n(GB, GBC, GBA, NES, SNES, N64, NDS)`);
       continue;
     }
     await RetroDB.add({ name: file.name, console: consoleId, blob: file });

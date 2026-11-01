@@ -43,11 +43,14 @@ async function boot() {
 
   // Config EmulatorJS (núcleos servidos desde CDN oficial)
   window.EJS_player = "#game";
-  window.EJS_core = rom.console;          // gb | gba | nes | snes | n64
+  window.EJS_core = rom.console;          // gb | gba | nes | snes | n64 | nds
   window.EJS_gameName = rom.name.replace(/\.[^.]+$/, "");
+  window.EJS_gameID = rom.id;             // partidas separadas por juego
   window.EJS_gameUrl = romUrl;
   window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
   window.EJS_startButton = true;
+  window.EJS_startButtonName = "Jugar";
+  window.EJS_color = "#3b82f6";
   window.EJS_fullscreenOnLoaded = false;
   // Las partidas (SRAM/estados) se guardan en IndexedDB del navegador.
 

@@ -1,5 +1,5 @@
 /* Service worker: cachea el shell de la app para uso offline. */
-const CACHE = "retrohub-web-v1";
+const CACHE = "retrohub-web-v2";
 const SHELL = [
   "./",
   "./index.html",
