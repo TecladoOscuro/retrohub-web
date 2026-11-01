@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>RetroHub Web</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, system-ui, sans-serif;
+    background: #1a1a2e; color: #eee; min-height: 100vh;
+  }
+  header { padding: 20px; display: flex; align-items: center; gap: 12px; }
+  header img { width: 40px; height: 40px; border-radius: 8px; }
+  header h1 { font-size: 1.4rem; margin: 0; }
+  #drop {
+    margin: 16px 20px; padding: 40px 20px; border: 2px dashed #555;
+    border-radius: 14px; text-align: center; color: #aaa; cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  #drop.over { border-color: #6cf; background: #223; }
+  #drop strong { color: #eee; }
+  #library { padding: 0 20px 40px; display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .game {
+    background: #23233a; border-radius: 12px; padding: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .game .title { font-weight: 600; font-size: .95rem; }
+  .badge {
+    align-self: flex-start; font-size: .7rem; padding: 2px 8px;
+    border-radius: 999px; background: #444; text-transform: uppercase;
+  }
+  .badge.gba { background: #6a4dff; } .badge.gb, .badge.gbc { background: #2e8b57; }
+  .badge.nes { background: #666; } .badge.snes { background: #8b5cf6; }
+  .badge.n64 { background: #d64545; }
+  .game button {
+    border: 0; border-radius: 8px; padding: 10px; font-size: .95rem;
+    font-weight: 600; cursor: pointer;
+  }
+  .play { background: #3b82f6; color: #fff; }
+  .del { background: transparent; color: #f66; padding: 4px !important; font-size: .8rem !important; }
+  .empty { color: #777; text-align: center; padding: 30px; grid-column: 1/-1; }
+  .note { color: #889; font-size: .78rem; padding: 0 20px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/icon-192.png" alt="RetroHub">
+  <h1>RetroHub Web</h1>
+</header>
+
+<div id="drop">
+  <strong>Toca para añadir una ROM</strong><br>
+  o arrástrala aquí<br>
+  <small>GB · GBC · GBA · NES · SNES · N64 — se guarda en este dispositivo</small>
+  <input type="file" id="file" accept=".gb,.gbc,.gba,.nes,.sfc,.smc,.z64,.v64,.n64" hidden multiple>
+</div>
+
+<div id="library"></div>
+<p class="note">
+  Las ROMs y las partidas guardadas viven en el almacenamiento local de este dispositivo.
+  Instálala como app (Compartir → «Añadir a pantalla de inicio») para que iOS no borre los datos.
+  PS2 no está disponible en web: no existen núcleos de navegador viables; usa la app de Mac.
+</p>
+
+<script src="idb.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

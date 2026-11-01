@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000">
+<title>Jugando — RetroHub Web</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #game { width: 100vw; height: 100vh; }
+  #loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #eee; font-family: -apple-system, system-ui, sans-serif; flex-direction: column; gap: 10px;
+  }
+  #back {
+    position: fixed; top: 10px; left: 10px; z-index: 10;
+    background: #0009; color: #fff; border: 1px solid #444; border-radius: 8px;
+    padding: 8px 12px; font-size: .85rem; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<button id="back" onclick="location.href='index.html'">← Biblioteca</button>
+<div id="loading">Cargando juego…</div>
+<div id="game"></div>
+
+<script src="idb.js"></script>
+<script>
+/* global RetroDB */
+
+const params = new URLSearchParams(location.search);
+const id = Number(params.get("id"));
+
+async function boot() {
+  const rom = await RetroDB.get(id);
+  if (!rom) {
+    document.getElementById("loading").textContent = "ROM no encontrada.";
+    return;
+  }
+  const romUrl = URL.createObjectURL(rom.blob);
+
+  // Config EmulatorJS (núcleos servidos desde CDN oficial)
+  window.EJS_player = "#game";
+  window.EJS_core = rom.console;          // gb | gba | nes | snes | n64
+  window.EJS_gameName = rom.name.replace(/\.[^.]+$/, "");
+  window.EJS_gameUrl = romUrl;
+  window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+  window.EJS_startButton = true;
+  window.EJS_fullscreenOnLoaded = false;
+  // Las partidas (SRAM/estados) se guardan en IndexedDB del navegador.
+
+  const script = document.createElement("script");
+  script.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
+  script.onload = () => document.getElementById("loading").remove();
+  script.onerror = () => {
+    document.getElementById("loading").textContent =
+      "No se pudo cargar el emulador (¿sin conexión?).";
+  };
+  document.body.appendChild(script);
+}
+
+boot();
+</script>
+</body>
+</html>
