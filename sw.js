@@ -1,6 +1,6 @@
 /* Service worker: network-first para HTML (evita shells obsoletas),
    cache-first solo para estáticos propios. */
-const CACHE = "retrohub-web-v7";
+const CACHE = "retrohub-web-v8";
 const SHELL = [
   "./",
   "./index.html",

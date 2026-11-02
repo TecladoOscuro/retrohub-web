@@ -127,15 +127,20 @@ function toast(msg) {
 const AUTO_SLOT = 0;
 const AUTOSAVE_MS = 30000;
 
-setInterval(async () => {
+async function autoSave() {
   try {
     const gm = emulator && emulator.gameManager;
-    if (!gm || !emulator.started || emulator.paused || document.hidden) return;
+    if (!gm || !emulator.started || emulator.paused) return;
     const state = await gm.getState();
     const buffer = state.buffer ? state.buffer.slice(state.byteOffset || 0, (state.byteOffset || 0) + state.byteLength) : state;
     await RetroDB.saveState(gameId, AUTO_SLOT, { state: buffer, screenshot: null });
   } catch (_) { /* silencioso: se reintenta en el siguiente ciclo */ }
-}, AUTOSAVE_MS);
+}
+
+setInterval(() => { if (!document.hidden) autoSave(); }, AUTOSAVE_MS);
+// Safari mata las páginas sobre todo en segundo plano: guardar justo antes
+document.addEventListener("visibilitychange", () => { if (document.hidden) autoSave(); });
+window.addEventListener("pagehide", () => { autoSave(); });
 
 async function onEmulatorReady() {
   const auto = await RetroDB.getState(gameId, AUTO_SLOT);
