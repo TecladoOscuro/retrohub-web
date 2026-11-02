@@ -54,6 +54,16 @@
     background: #222e; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: .85rem;
     opacity: 0; transition: opacity .3s; pointer-events: none;
   }
+  #resume {
+    position: fixed; top: 56px; left: 50%; transform: translate(-50%, -200%); z-index: 60;
+    background: #1d1d2bee; color: #eee; border: 1px solid #3b82f6; border-radius: 12px;
+    padding: 12px 16px; font-size: .9rem; display: flex; gap: 10px; align-items: center;
+    transition: transform .3s ease; max-width: 92vw;
+  }
+  #resume.open { transform: translate(-50%, 0); }
+  #resume button { border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 600; }
+  #resumeYes { background: #3b82f6; color: #fff; }
+  #resumeNo { background: #444; color: #eee; }
 </style>
 </head>
 <body>
@@ -73,6 +83,11 @@
   </div>
 </div>
 <div id="toast"></div>
+<div id="resume">
+  <span></span>
+  <button id="resumeYes">Continuar</button>
+  <button id="resumeNo">Descartar</button>
+</div>
 
 <script src="idb.js"></script>
 <script>
@@ -106,6 +121,38 @@ function toast(msg) {
   toastEl.style.opacity = 1;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (toastEl.style.opacity = 0), 1800);
+}
+
+// --- Auto-guardado cada 30s (slot 0, oculto) + banner "Continuar" tras recarga ---
+const AUTO_SLOT = 0;
+const AUTOSAVE_MS = 30000;
+
+setInterval(async () => {
+  try {
+    const gm = emulator && emulator.gameManager;
+    if (!gm || !emulator.started || emulator.paused || document.hidden) return;
+    const state = await gm.getState();
+    const buffer = state.buffer ? state.buffer.slice(state.byteOffset || 0, (state.byteOffset || 0) + state.byteLength) : state;
+    await RetroDB.saveState(gameId, AUTO_SLOT, { state: buffer, screenshot: null });
+  } catch (_) { /* silencioso: se reintenta en el siguiente ciclo */ }
+}, AUTOSAVE_MS);
+
+async function onEmulatorReady() {
+  const auto = await RetroDB.getState(gameId, AUTO_SLOT);
+  if (!auto) return;
+  const banner = document.getElementById("resume");
+  const mins = Math.round((Date.now() - auto.date) / 60000);
+  banner.querySelector("span").textContent =
+    `Partida auto-guardada ${mins < 1 ? "hace un momento" : `hace ${mins} min`}. ¿Continuar?`;
+  banner.classList.add("open");
+  document.getElementById("resumeYes").onclick = async () => {
+    try {
+      await emulator.gameManager.loadState(new Uint8Array(auto.state));
+      toast("Partida recuperada");
+    } catch (e) { toast("No se pudo recuperar: " + e.message); }
+    banner.classList.remove("open");
+  };
+  document.getElementById("resumeNo").onclick = () => banner.classList.remove("open");
 }
 
 // --- Panel de slots ---
@@ -177,7 +224,9 @@ async function boot() {
   window.EJS_color = "#3b82f6";
   window.EJS_fullscreenOnLoaded = false;
   window.EJS_onExit = () => { location.href = "index.html"; };
-  window.EJS_ready = function () { emulator = window.EJS_emulator; };
+  window.EJS_ready = function () { emulator = window.EJS_emulator; onEmulatorReady(); };
+  // Caché acotada: por defecto EJS reserva hasta 4 GB y Safari mata la página por memoria
+  window.EJS_cacheConfig = { enabled: true, cacheMaxSizeMB: 256, cacheMaxAgeMins: 1440 };
   // Flujos de archivos fuera: los estados van por nuestros slots (IndexedDB)
   window.EJS_Buttons = {
     saveState: false, loadState: false, quickSave: false, quickLoad: false,
