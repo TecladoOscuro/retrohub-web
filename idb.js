@@ -43,7 +43,17 @@ const RetroDB = (() => {
 
   return {
     // --- ROMs ---
-    add(rom) { return tx("readwrite", STORE_ROMS, (s) => s.add(rom)); },
+    async add(rom) {
+      try {
+        // Ruta normal: guardar el Blob directamente (Chrome, Safari recientes)
+        return await tx("readwrite", STORE_ROMS, (s) => s.add(rom));
+      } catch (e) {
+        // WebKit antiguo: "Error preparing Blob/File data" → guardar como ArrayBuffer
+        const buf = await rom.blob.arrayBuffer();
+        const alt = { name: rom.name, console: rom.console, data: buf, type: rom.blob.type };
+        return tx("readwrite", STORE_ROMS, (s) => s.add(alt));
+      }
+    },
     async all() {
       const db = await open();
       return reqToPromise(db.transaction(STORE_ROMS).objectStore(STORE_ROMS).getAll());

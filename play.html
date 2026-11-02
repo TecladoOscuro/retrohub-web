@@ -215,7 +215,10 @@ async function boot() {
     document.getElementById("loading").textContent = "ROM no encontrada.";
     return;
   }
-  const romUrl = URL.createObjectURL(rom.blob);
+  // rom.blob en navegadores modernos; rom.data (ArrayBuffer) en WebKit antiguo
+  const romUrl = URL.createObjectURL(
+    rom.blob ? rom.blob : new Blob([rom.data], { type: rom.type || "application/octet-stream" })
+  );
 
   // Config EmulatorJS (núcleos servidos desde CDN oficial, versión fijada)
   window.EJS_player = "#game";
