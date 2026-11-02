@@ -47,7 +47,7 @@ async function boot() {
   window.EJS_gameName = rom.name.replace(/\.[^.]+$/, "");
   window.EJS_gameID = rom.id;             // partidas separadas por juego
   window.EJS_gameUrl = romUrl;
-  window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+  window.EJS_pathtodata = "https://cdn.emulatorjs.org/4.2.3/data/";
   window.EJS_startButton = true;
   window.EJS_startButtonName = "Jugar";
   window.EJS_color = "#3b82f6";
@@ -55,7 +55,7 @@ async function boot() {
   // Las partidas (SRAM/estados) se guardan en IndexedDB del navegador.
 
   const script = document.createElement("script");
-  script.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
+  script.src = "https://cdn.emulatorjs.org/4.2.3/data/loader.js";
   script.onload = () => document.getElementById("loading").remove();
   script.onerror = () => {
     document.getElementById("loading").textContent =

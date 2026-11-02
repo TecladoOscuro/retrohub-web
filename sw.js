@@ -1,5 +1,6 @@
-/* Service worker: cachea el shell de la app para uso offline. */
-const CACHE = "retrohub-web-v2";
+/* Service worker: network-first para HTML (evita shells obsoletas),
+   cache-first solo para estáticos propios. */
+const CACHE = "retrohub-web-v3";
 const SHELL = [
   "./",
   "./index.html",
@@ -27,10 +28,24 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  // Solo cachear recursos propios; el CDN del emulador va a red siempre.
-  if (url.origin === location.origin) {
+  if (url.origin !== location.origin) return;
+
+  // Navegaciones y HTML: red primero, cache como respaldo offline.
+  if (event.request.mode === "navigate" || url.pathname.endsWith(".html")) {
     event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
+      fetch(event.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
     );
+    return;
   }
+
+  // Estáticos propios: cache primero.
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
+  );
 });
