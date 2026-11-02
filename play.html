@@ -147,6 +147,25 @@ setInterval(() => { if (!document.hidden) autoSave(); }, AUTOSAVE_MS);
 document.addEventListener("visibilitychange", () => { if (document.hidden) autoSave(); });
 window.addEventListener("pagehide", () => { autoSave(); });
 
+// Esperar a que el núcleo esté arrancado: EJS_ready llega ANTES que el boot.
+// Cargar un estado antes de started=true falla con errores tipo "undefined".
+function waitForStarted(timeoutMs = 60000) {
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now();
+    const tick = () => {
+      if (emulator && emulator.started) return resolve();
+      if (Date.now() - t0 > timeoutMs) return reject(new Error("el juego no terminó de arrancar"));
+      setTimeout(tick, 250);
+    };
+    tick();
+  });
+}
+
+async function loadStateSafe(buffer) {
+  await waitForStarted();
+  await emulator.gameManager.loadState(new Uint8Array(buffer));
+}
+
 async function onEmulatorReady() {
   const auto = await RetroDB.getState(gameId, AUTO_SLOT);
   if (!auto) return;
@@ -156,11 +175,16 @@ async function onEmulatorReady() {
     `Partida auto-guardada ${mins < 1 ? "hace un momento" : `hace ${mins} min`}. ¿Continuar?`;
   banner.classList.add("open");
   document.getElementById("resumeYes").onclick = async () => {
+    const btn = document.getElementById("resumeYes");
+    btn.disabled = true;
     try {
-      await emulator.gameManager.loadState(new Uint8Array(auto.state));
+      await loadStateSafe(auto.state);
       toast("Partida recuperada");
-    } catch (e) { toast("No se pudo recuperar: " + e.message); }
-    banner.classList.remove("open");
+      banner.classList.remove("open");
+    } catch (e) {
+      toast("No se pudo recuperar: " + (e && e.message ? e.message : "inténtalo de nuevo en unos segundos"));
+      btn.disabled = false;
+    }
   };
   document.getElementById("resumeNo").onclick = () => banner.classList.remove("open");
 }
@@ -173,6 +197,23 @@ async function renderSlots() {
   const states = await RetroDB.statesFor(gameId);
   const bySlot = Object.fromEntries(states.map((s) => [s.slot, s]));
   slotrow.innerHTML = "";
+
+  // Slot Auto (autoguardado): visible, de solo carga
+  const auto = bySlot[AUTO_SLOT];
+  if (auto) {
+    const el = document.createElement("button");
+    el.className = "slot occupied";
+    el.innerHTML = `Auto<span class="date">${new Date(auto.date).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>`;
+    el.onclick = async () => {
+      try {
+        await loadStateSafe(auto.state);
+        toast("Cargado auto-guardado");
+        panel.classList.remove("open");
+      } catch (e) { toast("Error al cargar: " + (e && e.message ? e.message : "desconocido")); }
+    };
+    slotrow.appendChild(el);
+  }
+
   for (let i = 1; i <= SLOT_COUNT; i++) {
     const st = bySlot[i];
     const el = document.createElement("button");
@@ -196,6 +237,7 @@ document.getElementById("saveBtn").onclick = async () => {
   try {
     const gm = emulator && emulator.gameManager;
     if (!gm || typeof gm.getState !== "function") throw new Error("emulador no listo");
+    if (!emulator.started) { toast("Espera a que el juego termine de arrancar"); return; }
     const state = await gm.getState();
     const buffer = state.buffer ? state.buffer.slice(state.byteOffset || 0, (state.byteOffset || 0) + state.byteLength) : state;
     await RetroDB.saveState(gameId, currentSlot, { state: buffer, screenshot: null });
@@ -210,10 +252,10 @@ document.getElementById("loadBtn").onclick = async () => {
     if (!st) { toast(`Slot ${currentSlot} vacío`); return; }
     const gm = emulator && emulator.gameManager;
     if (!gm || typeof gm.loadState !== "function") throw new Error("emulador no listo");
-    await gm.loadState(new Uint8Array(st.state));
+    await loadStateSafe(st.state);
     toast(`Cargado slot ${currentSlot}`);
     panel.classList.remove("open");
-  } catch (e) { toast("Error al cargar: " + e.message); }
+  } catch (e) { toast("Error al cargar: " + (e && e.message ? e.message : "desconocido")); }
 };
 
 async function boot() {
