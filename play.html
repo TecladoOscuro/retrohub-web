@@ -9,7 +9,8 @@
 <title>Jugando — RetroHub Web</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  #game { width: 100vw; height: 100vh; }
+  /* 100vh mide mal en iPad Safari; dvh se ajusta a la zona visible real */
+  #game { width: 100vw; height: 100vh; height: 100dvh; }
   #loading {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #eee; font-family: -apple-system, system-ui, sans-serif; flex-direction: column; gap: 10px;
@@ -48,8 +49,8 @@ async function boot() {
   window.EJS_gameID = rom.id;             // partidas separadas por juego
   window.EJS_gameUrl = romUrl;
   window.EJS_pathtodata = "https://cdn.emulatorjs.org/4.2.3/data/";
-  window.EJS_startButton = true;
-  window.EJS_startButtonName = "Jugar";
+  window.EJS_startOnLoaded = true; // 1 clic: arranca directo sin pantalla de inicio
+  window.EJS_startButton = false;
   window.EJS_color = "#3b82f6";
   window.EJS_fullscreenOnLoaded = false;
   // Las partidas (SRAM/estados) se guardan en IndexedDB del navegador.
