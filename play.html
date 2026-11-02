@@ -8,51 +8,157 @@
 <meta name="theme-color" content="#000">
 <title>Jugando — RetroHub Web</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
+    font-family: -apple-system, system-ui, sans-serif; }
   /* 100vh mide mal en iPad Safari; dvh se ajusta a la zona visible real */
   #game { width: 100vw; height: 100vh; height: 100dvh; }
   #loading {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #eee; font-family: -apple-system, system-ui, sans-serif; flex-direction: column; gap: 10px;
+    color: #eee; flex-direction: column; gap: 10px;
   }
-  /* Botón volver: pequeño, se auto-oculta a los 3s; tocar la franja superior lo recupera */
-  #back {
-    position: fixed; top: max(8px, env(safe-area-inset-top)); left: 8px; z-index: 40;
-    width: 40px; height: 40px; border-radius: 50%;
+  .fab {
+    position: fixed; z-index: 40; width: 40px; height: 40px; border-radius: 50%;
     background: #0008; color: #fff; border: 1px solid #ffffff44;
-    font-size: 1.1rem; cursor: pointer; padding: 0;
-    transition: opacity .35s;
+    font-size: 1.1rem; cursor: pointer; padding: 0; transition: opacity .35s;
   }
-  #back.hidden { opacity: 0; pointer-events: none; }
+  .fab.hidden { opacity: 0; pointer-events: none; }
+  #back { top: max(8px, env(safe-area-inset-top)); left: 8px; }
+  #slotsBtn { top: max(8px, env(safe-area-inset-top)); right: 8px; }
+
+  /* Panel de slots */
+  #panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: #17171fdd; backdrop-filter: blur(12px);
+    border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    color: #eee; transform: translateY(110%); transition: transform .25s ease;
+  }
+  #panel.open { transform: translateY(0); }
+  #panel h2 { margin: 0 0 4px; font-size: 1rem; }
+  #panel .sub { color: #99a; font-size: .8rem; margin: 0 0 12px; }
+  .slotrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .slot {
+    border: 2px solid #333; border-radius: 10px; padding: 8px 6px; text-align: center;
+    background: #22222f; cursor: pointer; color: #eee; font-size: .8rem;
+  }
+  .slot.current { border-color: #3b82f6; }
+  .slot .date { display: block; color: #889; font-size: .65rem; margin-top: 4px; min-height: 1em; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .actions button {
+    flex: 1; padding: 12px; border: 0; border-radius: 10px; font-weight: 700; font-size: .95rem;
+  }
+  #saveBtn { background: #3b82f6; color: #fff; }
+  #loadBtn { background: #2e8b57; color: #fff; }
+  #closePanel { background: #333; color: #eee; flex: 0 0 60px; }
+  #toast {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 60;
+    background: #222e; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: .85rem;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
 </style>
 </head>
 <body>
-<button id="back" aria-label="Volver a la biblioteca" onclick="location.href='index.html'">←</button>
+<button id="back" class="fab" aria-label="Volver a la biblioteca" onclick="location.href='index.html'">←</button>
+<button id="slotsBtn" class="fab" aria-label="Slots de guardado">💾</button>
 <div id="loading">Cargando juego…</div>
 <div id="game"></div>
+
+<div id="panel">
+  <h2>Slots de guardado</h2>
+  <p class="sub">Elige slot (el azul es el activo). Guardar sobrescribe el slot activo. La partida del propio juego se guarda sola automáticamente.</p>
+  <div class="slotrow" id="slotrow"></div>
+  <div class="actions">
+    <button id="saveBtn">💾 Guardar</button>
+    <button id="loadBtn">📂 Cargar</button>
+    <button id="closePanel">✕</button>
+  </div>
+</div>
+<div id="toast"></div>
 
 <script src="idb.js"></script>
 <script>
 /* global RetroDB */
 
 const params = new URLSearchParams(location.search);
-const id = Number(params.get("id"));
+const gameId = Number(params.get("id"));
 
-// --- Botón volver auto-ocultable ---
-const backBtn = document.getElementById("back");
+const SLOT_COUNT = 4;
+let currentSlot = Number(localStorage.getItem(`slot:${gameId}`)) || 1;
+let emulator = null;
+
+// --- FABs auto-ocultables ---
+const fabs = [document.getElementById("back"), document.getElementById("slotsBtn")];
 let hideTimer;
-function showBack() {
-  backBtn.classList.remove("hidden");
+function showFabs() {
+  fabs.forEach((f) => f.classList.remove("hidden"));
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => backBtn.classList.add("hidden"), 3000);
+  hideTimer = setTimeout(() => fabs.forEach((f) => f.classList.add("hidden")), 3000);
 }
-showBack();
+showFabs();
 document.addEventListener("pointerdown", (e) => {
-  if (e.clientY < 70 && !backBtn.contains(e.target)) showBack();
+  if (e.clientY < 70 && !e.target.closest(".fab")) showFabs();
 }, { passive: true });
 
+// --- Toast ---
+const toastEl = document.getElementById("toast");
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (toastEl.style.opacity = 0), 1800);
+}
+
+// --- Panel de slots ---
+const panel = document.getElementById("panel");
+const slotrow = document.getElementById("slotrow");
+
+async function renderSlots() {
+  const states = await RetroDB.statesFor(gameId);
+  const bySlot = Object.fromEntries(states.map((s) => [s.slot, s]));
+  slotrow.innerHTML = "";
+  for (let i = 1; i <= SLOT_COUNT; i++) {
+    const st = bySlot[i];
+    const el = document.createElement("button");
+    el.className = "slot" + (i === currentSlot ? " current" : "");
+    el.innerHTML = `Slot ${i}<span class="date">${st ? new Date(st.date).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "vacío"}</span>`;
+    el.onclick = () => {
+      currentSlot = i;
+      localStorage.setItem(`slot:${gameId}`, String(i));
+      renderSlots();
+    };
+    slotrow.appendChild(el);
+  }
+}
+
+document.getElementById("slotsBtn").onclick = () => { renderSlots(); panel.classList.add("open"); };
+document.getElementById("closePanel").onclick = () => panel.classList.remove("open");
+
+document.getElementById("saveBtn").onclick = async () => {
+  try {
+    const gm = emulator && emulator.gameManager;
+    if (!gm || typeof gm.getState !== "function") throw new Error("emulador no listo");
+    const state = await gm.getState();
+    const buffer = state.buffer ? state.buffer.slice(state.byteOffset || 0, (state.byteOffset || 0) + state.byteLength) : state;
+    await RetroDB.saveState(gameId, currentSlot, { state: buffer, screenshot: null });
+    toast(`Guardado en slot ${currentSlot}`);
+    renderSlots();
+  } catch (e) { toast("Error al guardar: " + e.message); }
+};
+
+document.getElementById("loadBtn").onclick = async () => {
+  try {
+    const st = await RetroDB.getState(gameId, currentSlot);
+    if (!st) { toast(`Slot ${currentSlot} vacío`); return; }
+    const gm = emulator && emulator.gameManager;
+    if (!gm || typeof gm.loadState !== "function") throw new Error("emulador no listo");
+    await gm.loadState(new Uint8Array(st.state));
+    toast(`Cargado slot ${currentSlot}`);
+    panel.classList.remove("open");
+  } catch (e) { toast("Error al cargar: " + e.message); }
+};
+
 async function boot() {
-  const rom = await RetroDB.get(id);
+  const rom = await RetroDB.get(gameId);
   if (!rom) {
     document.getElementById("loading").textContent = "ROM no encontrada.";
     return;
@@ -71,7 +177,12 @@ async function boot() {
   window.EJS_color = "#3b82f6";
   window.EJS_fullscreenOnLoaded = false;
   window.EJS_onExit = () => { location.href = "index.html"; };
-  // Las partidas (SRAM/estados) se guardan en IndexedDB del navegador.
+  window.EJS_ready = function () { emulator = window.EJS_emulator; };
+  // Flujos de archivos fuera: los estados van por nuestros slots (IndexedDB)
+  window.EJS_Buttons = {
+    saveState: false, loadState: false, quickSave: false, quickLoad: false,
+    saveSavFiles: false, loadSavFiles: false
+  };
 
   const script = document.createElement("script");
   script.src = "https://cdn.emulatorjs.org/4.2.3/data/loader.js";

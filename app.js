@@ -7,6 +7,24 @@ const CONSOLE_BY_EXT = {
   nds: "nds"
 };
 
+// Repos de carátulas libretro-thumbnails por consola (nombradas como la ROM No-Intro)
+const THUMB_REPO = {
+  gb: "Nintendo_-_Game_Boy",
+  gbc: "Nintendo_-_Game_Boy_Color",
+  gba: "Nintendo_-_Game_Boy_Advance",
+  nds: "Nintendo_-_Nintendo_DS",
+  nes: "Nintendo_-_Nintendo_Entertainment_System",
+  snes: "Nintendo_-_Super_Nintendo_Entertainment_System",
+  n64: "Nintendo_-_Nintendo_64"
+};
+
+function coverUrl(rom) {
+  const repo = THUMB_REPO[rom.console];
+  if (!repo) return null;
+  const name = rom.name.replace(/\.[^.]+$/, "");
+  return `https://raw.githubusercontent.com/libretro-thumbnails/${repo}/master/Named_Boxarts/${encodeURIComponent(name)}.png`;
+}
+
 const drop = document.getElementById("drop");
 const fileInput = document.getElementById("file");
 const libraryEl = document.getElementById("library");
@@ -52,10 +70,19 @@ async function render() {
     card.className = "game";
     const title = rom.name.replace(/\.[^.]+$/, "").replace(/[\[\(][^\)\]]*[\)\]]/g, "").trim();
     card.innerHTML = `
+      <img class="cover" alt="" loading="lazy">
       <span class="badge ${rom.console}">${rom.console}</span>
       <span class="title"></span>
       <button class="play">▶ Jugar</button>
       <button class="del">Eliminar</button>`;
+    const img = card.querySelector(".cover");
+    const url = coverUrl(rom);
+    if (url) {
+      img.src = url;
+      img.onerror = () => img.remove();
+    } else {
+      img.remove();
+    }
     card.querySelector(".title").textContent = title;
     card.querySelector(".play").onclick = () => {
       location.href = `play.html?id=${rom.id}`;
