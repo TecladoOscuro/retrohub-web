@@ -15,15 +15,19 @@
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #eee; font-family: -apple-system, system-ui, sans-serif; flex-direction: column; gap: 10px;
   }
+  /* Botón volver: pequeño, se auto-oculta a los 3s; tocar la franja superior lo recupera */
   #back {
-    position: fixed; top: 10px; left: 10px; z-index: 10;
-    background: #0009; color: #fff; border: 1px solid #444; border-radius: 8px;
-    padding: 8px 12px; font-size: .85rem; cursor: pointer;
+    position: fixed; top: max(8px, env(safe-area-inset-top)); left: 8px; z-index: 40;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #0008; color: #fff; border: 1px solid #ffffff44;
+    font-size: 1.1rem; cursor: pointer; padding: 0;
+    transition: opacity .35s;
   }
+  #back.hidden { opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
-<button id="back" onclick="location.href='index.html'">← Biblioteca</button>
+<button id="back" aria-label="Volver a la biblioteca" onclick="location.href='index.html'">←</button>
 <div id="loading">Cargando juego…</div>
 <div id="game"></div>
 
@@ -34,6 +38,19 @@
 const params = new URLSearchParams(location.search);
 const id = Number(params.get("id"));
 
+// --- Botón volver auto-ocultable ---
+const backBtn = document.getElementById("back");
+let hideTimer;
+function showBack() {
+  backBtn.classList.remove("hidden");
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => backBtn.classList.add("hidden"), 3000);
+}
+showBack();
+document.addEventListener("pointerdown", (e) => {
+  if (e.clientY < 70 && !backBtn.contains(e.target)) showBack();
+}, { passive: true });
+
 async function boot() {
   const rom = await RetroDB.get(id);
   if (!rom) {
@@ -42,7 +59,7 @@ async function boot() {
   }
   const romUrl = URL.createObjectURL(rom.blob);
 
-  // Config EmulatorJS (núcleos servidos desde CDN oficial)
+  // Config EmulatorJS (núcleos servidos desde CDN oficial, versión fijada)
   window.EJS_player = "#game";
   window.EJS_core = rom.console;          // gb | gba | nes | snes | n64 | nds
   window.EJS_gameName = rom.name.replace(/\.[^.]+$/, "");
@@ -53,6 +70,7 @@ async function boot() {
   window.EJS_startButton = false;
   window.EJS_color = "#3b82f6";
   window.EJS_fullscreenOnLoaded = false;
+  window.EJS_onExit = () => { location.href = "index.html"; };
   // Las partidas (SRAM/estados) se guardan en IndexedDB del navegador.
 
   const script = document.createElement("script");
