@@ -40,7 +40,9 @@
     border: 2px solid #333; border-radius: 10px; padding: 8px 6px; text-align: center;
     background: #22222f; cursor: pointer; color: #eee; font-size: .8rem;
   }
+  .slot.occupied { background: #1d3325; border-color: #2e8b57; }
   .slot.current { border-color: #3b82f6; }
+  .slot.current.occupied { border-color: #3b82f6; box-shadow: 0 0 0 2px #3b82f655; }
   .slot .date { display: block; color: #889; font-size: .65rem; margin-top: 4px; min-height: 1em; }
   .actions { display: flex; gap: 10px; margin-top: 14px; }
   .actions button {
@@ -48,6 +50,7 @@
   }
   #saveBtn { background: #3b82f6; color: #fff; }
   #loadBtn { background: #2e8b57; color: #fff; }
+  #loadBtn:disabled { background: #333; color: #777; cursor: not-allowed; }
   #closePanel { background: #333; color: #eee; flex: 0 0 60px; }
   #toast {
     position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 10002;
@@ -171,7 +174,7 @@ async function renderSlots() {
   for (let i = 1; i <= SLOT_COUNT; i++) {
     const st = bySlot[i];
     const el = document.createElement("button");
-    el.className = "slot" + (i === currentSlot ? " current" : "");
+    el.className = "slot" + (st ? " occupied" : "") + (i === currentSlot ? " current" : "");
     el.innerHTML = `Slot ${i}<span class="date">${st ? new Date(st.date).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "vacío"}</span>`;
     el.onclick = () => {
       currentSlot = i;
@@ -180,6 +183,8 @@ async function renderSlots() {
     };
     slotrow.appendChild(el);
   }
+  // Cargar solo si el slot activo tiene datos: evita confusión de "slot vacío"
+  document.getElementById("loadBtn").disabled = !bySlot[currentSlot];
 }
 
 document.getElementById("slotsBtn").onclick = () => { renderSlots(); panel.classList.add("open"); };
